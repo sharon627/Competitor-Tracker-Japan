@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { 
@@ -480,7 +479,7 @@ const App = () => {
             <h1 className="text-xl font-bold text-slate-800 tracking-tight capitalize">
               {activeTab === 'marriott' ? 'Market Intelligence Feed' : activeTab === 'chat' ? 'Strategy AI Chat' : 'Operations History'}
             </h1>
-            <p className="text-xs text-slate-500 font-medium">Monitoring competitor activity across Greater Japan</p>
+            <p className="text-xs text-slate-500 font-medium">Monitoring competitor activity across Japan</p>
           </div>
           
           <div className="flex items-center gap-6">
