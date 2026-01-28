@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { 
@@ -6,7 +7,7 @@ import {
   RefreshCcw, 
   Search, 
   X,
-  FileText,
+  FileText, 
   Activity,
   Loader2,
   Flag,
@@ -312,13 +313,8 @@ const App = () => {
     if (cooldown > 0 || isScraping) return;
     setIsScraping(true);
     
-    const apiKey = process.env.API_KEY;
-    if (!apiKey) {
-        setIsScraping(false);
-        return;
-    }
-
-    const ai = new GoogleGenAI({ apiKey });
+    // GUIDELINE COMPLIANCE: Use process.env.API_KEY directly in the named parameter.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     try {
       for (const brandKey in BRAND_CONFIGS) {
@@ -336,6 +332,7 @@ const App = () => {
             config: { responseMimeType: "application/json", temperature: 0.1 }
           });
 
+          // response.text is a property, not a method
           const extracted = JSON.parse(response.text || '[]');
 
           const processed: Campaign[] = extracted.map((item: any, i: number) => ({
@@ -744,7 +741,8 @@ const App = () => {
                       <Bot size={20} />
                     </div>
                     <div>
-                      h2 className="text-sm font-bold text-slate-800">Strategy Brain v1.0</h2>
+                      {/* FIXED: Missing opening bracket for h2 tag */}
+                      <h2 className="text-sm font-bold text-slate-800">Strategy Brain v1.0</h2>
                       <div className="flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Reasoning</span>
