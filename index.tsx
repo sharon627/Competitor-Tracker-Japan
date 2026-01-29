@@ -64,6 +64,8 @@ interface Message {
   timestamp: Date;
 }
 
+const CATEGORIES_LIST = "family, dining, rewards, business, travel, spa, wedding, general, partnership, seasonal";
+
 // --- Brand Specific Isolation ---
 const BRAND_CONFIGS: Record<string, {
   name: string;
@@ -81,8 +83,9 @@ const BRAND_CONFIGS: Record<string, {
       TASK: Identify and extract all current marketing campaigns and HIGH-IMPACT HERO BANNERS.
       PRIORITY TARGETS: Look for seasonal Japan themes, Member Exclusives, and Flagship promotions.
       IMPORTANT: If it's a primary visual slide/hero banner, set "isBanner": true.
-      IMPORTANT: TRANSLATE ALL EXTRACTED TEXT (name, info, category) INTO ENGLISH.
-      Respond ONLY with a JSON array: [{"name": "...", "info": "...", "category": "...", "isBanner": boolean}]`
+      CATEGORY MAPPING: Use ONLY one of these keys: [${CATEGORIES_LIST}].
+      IMPORTANT: TRANSLATE ALL EXTRACTED TEXT (name, info) INTO ENGLISH.
+      Respond ONLY with a JSON array: [{"name": "...", "info": "...", "category": "one_of_the_keys", "isBanner": boolean}]`
   },
   ihg: {
     name: 'IHG',
@@ -93,8 +96,9 @@ const BRAND_CONFIGS: Record<string, {
       STREAM: ${pageText}
       TASK: Deep scan for high-impact Visual Hero Banners and Promotional Seasonal Campaigns in Japan.
       IMPORTANT: If it's a primary visual slide/hero banner, set "isBanner": true.
-      IMPORTANT: TRANSLATE ALL EXTRACTED TEXT (name, info, category) INTO ENGLISH.
-      Respond ONLY with a JSON array: [{"name": "...", "info": "...", "category": "...", "isBanner": boolean}]`
+      CATEGORY MAPPING: Use ONLY one of these keys: [${CATEGORIES_LIST}].
+      IMPORTANT: TRANSLATE ALL EXTRACTED TEXT (name, info) INTO ENGLISH.
+      Respond ONLY with a JSON array: [{"name": "...", "info": "...", "category": "one_of_the_keys", "isBanner": boolean}]`
   },
   hyatt: {
     name: 'Hyatt',
@@ -106,8 +110,9 @@ const BRAND_CONFIGS: Record<string, {
       TASK: Extract active promotional offers and limited time member deals for Japan.
       SPECIFIC PRIORITY: Identify high-impact Hero Banners like "TO A NEW ADVENTURE" and point-earning promotions (e.g., 5 Base Points, free nights from 3,500 points).
       IMPORTANT: If it's a primary visual/hero banner or main promotion, set "isBanner": true.
-      IMPORTANT: TRANSLATE ALL EXTRACTED TEXT (name, info, category) INTO ENGLISH.
-      Respond ONLY with a JSON array: [{"name": "...", "info": "...", "category": "...", "isBanner": boolean}]`
+      CATEGORY MAPPING: Use ONLY one of these keys: [${CATEGORIES_LIST}].
+      IMPORTANT: TRANSLATE ALL EXTRACTED TEXT (name, info) INTO ENGLISH.
+      Respond ONLY with a JSON array: [{"name": "...", "info": "...", "category": "one_of_the_keys", "isBanner": boolean}]`
   },
   accor: {
     name: 'Accor',
@@ -118,8 +123,9 @@ const BRAND_CONFIGS: Record<string, {
       STREAM: ${pageText}
       TASK: Identify tactical promotions, seasonal offers, and ALL member exclusives in the Japan market.
       IMPORTANT: If it's a primary visual/hero banner, set "isBanner": true.
-      IMPORTANT: TRANSLATE ALL EXTRACTED TEXT (name, info, category) INTO ENGLISH.
-      Respond ONLY with a JSON array: [{"name": "...", "info": "...", "category": "...", "isBanner": boolean}]`
+      CATEGORY MAPPING: Use ONLY one of these keys: [${CATEGORIES_LIST}].
+      IMPORTANT: TRANSLATE ALL EXTRACTED TEXT (name, info) INTO ENGLISH.
+      Respond ONLY with a JSON array: [{"name": "...", "info": "...", "category": "one_of_the_keys", "isBanner": boolean}]`
   },
   hilton: {
     name: 'Hilton',
@@ -131,8 +137,9 @@ const BRAND_CONFIGS: Record<string, {
       TASK: Extract active promotional assets and marketing messaging for Hilton's Japan presence.
       SPECIFIC TARGETS: Look for "Points Unlimited", Hilton Honors member deals, and seasonal Japan vacation offers.
       IMPORTANT: If it's a primary visual slide/hero banner, set "isBanner": true.
-      IMPORTANT: TRANSLATE ALL EXTRACTED TEXT (name, info, category) INTO ENGLISH.
-      Respond ONLY with a JSON array: [{"name": "...", "info": "...", "category": "...", "isBanner": boolean}]`
+      CATEGORY MAPPING: Use ONLY one of these keys: [${CATEGORIES_LIST}].
+      IMPORTANT: TRANSLATE ALL EXTRACTED TEXT (name, info) INTO ENGLISH.
+      Respond ONLY with a JSON array: [{"name": "...", "info": "...", "category": "one_of_the_keys", "isBanner": boolean}]`
   }
 };
 
@@ -385,7 +392,11 @@ const App = () => {
     return campaigns.filter(c => {
       const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                            c.info.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = categoryFilter === 'all' || c.category === categoryFilter;
+      
+      // Robust category matching (case-insensitive)
+      const matchesCategory = categoryFilter === 'all' || 
+                             (c.category && c.category.toLowerCase() === categoryFilter.toLowerCase());
+                             
       const matchesBrand = brandFilter === 'all' || c.competitor.toLowerCase() === brandFilter.toLowerCase();
       const matchesStatus = statusFilter === 'all' || (statusFilter === 'active' ? c.isActive : !c.isActive);
       const matchesFavorite = !showFavoritesOnly || favorites.includes(c.id);
@@ -394,11 +405,18 @@ const App = () => {
       if (dateFilter !== 'all') {
         const now = new Date();
         const disc = new Date(c.discoveryDate);
-        const diffHours = (now.getTime() - disc.getTime()) / (1000 * 60 * 60);
         
-        if (dateFilter === 'today') matchesDate = diffHours <= 24;
-        else if (dateFilter === 'week') matchesDate = diffHours <= 168;
-        else if (dateFilter === 'month') matchesDate = diffHours <= 720;
+        // Handle invalid dates
+        if (isNaN(disc.getTime())) {
+          matchesDate = false;
+        } else {
+          const diffMs = now.getTime() - disc.getTime();
+          const diffHours = diffMs / (1000 * 60 * 60);
+          
+          if (dateFilter === 'today') matchesDate = diffHours <= 24;
+          else if (dateFilter === 'week') matchesDate = diffHours <= 168; // 7 days
+          else if (dateFilter === 'month') matchesDate = diffHours <= 720; // 30 days
+        }
       }
 
       return matchesSearch && matchesCategory && matchesBrand && matchesStatus && matchesFavorite && matchesDate;
@@ -408,7 +426,11 @@ const App = () => {
   const stats = useMemo(() => {
     const active = campaigns.filter(c => c.isActive).length;
     const now = new Date();
-    const isNew = (date: string) => (now.getTime() - new Date(date).getTime()) < 7 * 24 * 60 * 60 * 1000;
+    const isNew = (date: string) => {
+      const disc = new Date(date);
+      if (isNaN(disc.getTime())) return false;
+      return (now.getTime() - disc.getTime()) < 7 * 24 * 60 * 60 * 1000;
+    };
     const newThisWeek = campaigns.filter(c => isNew(c.discoveryDate)).length;
     
     return {
@@ -740,7 +762,6 @@ const App = () => {
                       <Bot size={20} />
                     </div>
                     <div>
-                      {/* FIXED: Missing opening bracket for h2 tag */}
                       <h2 className="text-sm font-bold text-slate-800">Strategy Brain v1.0</h2>
                       <div className="flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
